@@ -1,13 +1,13 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Button, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
 import { auth } from '../../../config/firebase';
 import { addMascota } from '../../../services/pets';
 
 export default function AddMascota() {
   const router = useRouter();
   const [nombre, setNombre] = useState('');
-  const [especie, setEspecie] = useState('');
   const [raza, setRaza] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [peso, setPeso] = useState('');
@@ -19,6 +19,21 @@ export default function AddMascota() {
   const [alertaDesparasitacion, setAlertaDesparasitacion] = useState(true);
   const [alertaRevision, setAlertaRevision] = useState(true);
   const [alertaMedicamentos, setAlertaMedicamentos] = useState(true);
+
+// Estados para el dropdown de especies
+  const [open, setOpen] = useState(false);
+  const [especie, setEspecie] = useState('');
+  const [especies, setEspecies] = useState([
+    { label: 'Perro', value: 'Perro' },
+    { label: 'Gato', value: 'Gato' },
+    { label: 'Ave', value: 'Ave' },
+    { label: 'Pez', value: 'Pez' },
+    { label: 'Hámster', value: 'Hámster' },
+    { label: 'Conejo', value: 'Conejo' },
+    { label: 'Reptil', value: 'Reptil' },
+    { label: 'Otro', value: 'Otro' },
+  ]);
+
 
   const handleSave = async () => {
     const user = auth.currentUser;
@@ -73,12 +88,25 @@ export default function AddMascota() {
           onChangeText={setNombre}
           style={styles.input}
         />
-        <TextInput
-          placeholder="Especie (Perro, Gato, etc.)"
-          value={especie}
-          onChangeText={setEspecie}
-          style={styles.input}
-        />
+        <Text style={styles.label}>Especie *</Text>
+      <DropDownPicker
+        open={open}
+        value={especie}
+        items={especies}
+        setOpen={setOpen}
+        setValue={setEspecie}
+        setItems={setEspecies}
+        placeholder="Selecciona una especie"
+        style={styles.dropdownStyle}
+        textStyle={styles.dropdownText}
+        dropDownContainerStyle={styles.dropdownContainer}
+        listMode="SCROLLVIEW"
+        scrollViewProps={{
+          nestedScrollEnabled: true,
+        }}
+        zIndex={3000}
+        zIndexInverse={1000}
+      />
         <TextInput
           placeholder="Raza"
           value={raza}
@@ -180,6 +208,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 16,
   },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
   switchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -189,4 +223,23 @@ const styles = StyleSheet.create({
   buttonContainer: {
     margin: 20,
   },
+  dropdownStyle: {
+    borderColor: '#ddd',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 5,
+    marginBottom: 10,
+  },
+  dropdownContainer: {
+    borderColor: '#ddd',
+    backgroundColor: 'white',
+    borderRadius: 8,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownSpacer: {
+    height: 150, // Ajusta este valor según sea necesario
+  }
 });

@@ -1,50 +1,116 @@
-# Welcome to your Expo app 👋
+My pet Care App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Integrantes: Nicolás Cristóbal Salamanca Arce
 
-## Get started
+Descripción
+My Pet Care es una aplicación móvil integral para el cuidado y seguimiento de mascotas, diseñada para ayudar a los dueños a gestionar todos los aspectos relacionados con la salud y bienestar de sus animales. La aplicación permite registrar información vital, programar citas veterinarias, controlar medicamentos y monitorear la alimentación y el peso de cada mascota.
 
-1. Install dependencies
+Tecnologías utilizadas
+-React Native con TypeScript
+-Expo Framework y Expo Router para navegación
+-Firebase (Authentication, Firestore, Storage)
+-Sistema de notificaciones locales
+-Integración con Google Calendar
+-Persistencia de datos con AsyncStorage
+---------------------------------------------------------------------
 
-   ```bash
+Requerimientos funcionales
+1. Gestión de usuarios
+
+Registro e inicio de sesión seguro con email y contraseña
+Persistencia de sesión entre reinicios de la aplicación
+Cierre de sesión y gestión de perfil
+
+2. Gestión de mascotas
+
+ Registro de múltiples mascotas por usuario
+Almacenamiento de datos básicos: nombre, especie, raza, edad, peso, foto
+Actualización y eliminación de registros de mascotas
+
+3. Control médico y veterinario
+
+ Registro de citas veterinarias con fecha, hora y motivo
+Programación de recordatorios para citas
+Integración con Google Calendar
+Historial de citas anteriores
+
+4. Seguimiento de medicamentos
+
+ Registro de medicamentos con dosis, frecuencia y duración
+Sistema de notificaciones para administración de medicamentos
+Historial de medicamentos administrados
+
+5. Control de alimentación
+
+ Registro de dietas y horarios de alimentación
+Notificaciones de horarios de comida
+Seguimiento de consumo y preferencias
+
+6. Monitoreo de peso
+
+ Registro periódico del peso de la mascota
+Visualización de la evolución del peso
+Alertas por cambios significativos
+
+7. Sistema de notificaciones
+
+ Recordatorios para citas veterinarias
+Alertas para administración de medicamentos
+Notificaciones para rutinas de alimentación
+
+Requerimientos no funcionales
+
+1. Seguridad
+
+Protección de datos de usuario mediante autenticación
+Reglas de seguridad para acceso a datos en Firebase
+
+2. Usabilidad
+
+Interfaz intuitiva y amigable para el usuario
+Diseño responsivo para diferentes tamaños de pantalla
+
+3. Rendimiento
+
+Tiempos de carga rápidos (menos de 3 segundos)
+Funcionamiento fluido incluso con múltiples mascotas registradas
+Optimización de consumo de recursos del dispositivo
+
+4. Disponibilidad
+
+Funcionamiento parcial sin conexión a internet
+Sincronización automática al recuperar la conexión
+Persistencia de datos críticos en el dispositivo
+
+5. Escalabilidad
+
+Arquitectura que permite añadir nuevas funcionalidades
+Capacidad para gestionar aumento en la base de usuarios
+Diseño modular para facilitar mantenimiento
+
+6. Compatibilidad
+
+Funcionamiento en dispositivos Android modernos
+Adaptación a diferentes resoluciones de pantallas
+
+
+
+## Instrucciones
+
+1. Instalar las dependencias
+
+   
    npm install
-   ```
+   
 
-2. Start the app
+2. Iniciar la app
 
-   ```bash
+
    npx expo start
-   ```
+   
 
-In the output, you'll find options to open the app in a
+Descargar la aplicacion Expo go en play store y usar la opcion de escanear el codigo que va a generar la terminal.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo.
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.

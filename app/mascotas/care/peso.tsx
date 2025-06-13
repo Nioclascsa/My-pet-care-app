@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { VictoryAxis, VictoryChart, VictoryLine, VictoryScatter, VictoryTheme } from 'victory';
 import { auth } from '../../../config/firebase';
 import { addRegistroPeso, getMascotas, getRegistrosPeso, type Mascota, type RegistroPeso } from '../../../services/pets';
 
@@ -129,56 +128,43 @@ export default function RegistroPesoScreen() {
 
       {/* Sección del gráfico */}
       <View style={styles.chartSection}>
-        <Text style={styles.sectionTitle}>📊 Evolución del Peso</Text>
+  <Text style={styles.sectionTitle}>📊 Evolución del Peso</Text>
+  
+  <View style={styles.chartPlaceholder}>
+    {chartData.length > 1 ? (
+      <>
+        <Text style={styles.chartPlaceholderTitle}>Gráfico de evolución del peso</Text>
+        <Text style={styles.chartPlaceholderSubtitle}>
+          Mostrando datos de {chartData.length} registros
+        </Text>
         
-        {chartData.length > 1 ? (
-          <View style={styles.chartContainer}>
-            <VictoryChart 
-              theme={VictoryTheme.material}
-              width={350}
-              height={250}
-              padding={{ top: 10, bottom: 40, left: 50, right: 20 }}
-              scale={{ x: "time" }}
-            >
-              <VictoryAxis
-                tickFormat={(date) => `${date.getDate()}/${date.getMonth()+1}`}
-                label="Fecha"
-                style={{
-                  axisLabel: { padding: 30 }
-                }}
-              />
-              <VictoryAxis
-                dependentAxis
-                label="Peso (kg)"
-                style={{
-                  axisLabel: { padding: 35 }
-                }}
-              />
-              <VictoryLine
-                data={chartData}
-                style={{
-                  data: { stroke: "#FF9800", strokeWidth: 2 }
-                }}
-              />
-              <VictoryScatter
-                data={chartData}
-                size={5}
-                style={{
-                  data: { fill: "#E65100" }
-                }}
-              />
-            </VictoryChart>
+        {/* Tabla simple de datos */}
+        <View style={styles.miniTable}>
+          <View style={styles.miniTableHeader}>
+            <Text style={styles.miniTableHeaderText}>Fecha</Text>
+            <Text style={styles.miniTableHeaderText}>Peso (kg)</Text>
           </View>
-        ) : (
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>
-              {chartData.length === 0 
-                ? "No hay registros de peso para mostrar"
-                : "Se necesitan al menos 2 registros para generar el gráfico"}
-            </Text>
-          </View>
-        )}
-      </View>
+          {chartData.slice(-5).map((punto, index) => (
+            <View key={index} style={styles.miniTableRow}>
+              <Text style={styles.miniTableCell}>
+                {punto.x.getDate()}/{punto.x.getMonth()+1}/{punto.x.getFullYear()}
+              </Text>
+              <Text style={[styles.miniTableCell, {fontWeight: 'bold', color: '#FF9800'}]}>
+                {punto.y}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </>
+    ) : (
+      <Text style={styles.noDataText}>
+        {chartData.length === 0 
+          ? "No hay registros de peso para mostrar"
+          : "Se necesitan al menos 2 registros para mostrar tendencia"}
+      </Text>
+    )}
+  </View>
+</View>
 
       {/* Formulario de registro */}
       <View style={styles.section}>
@@ -400,4 +386,50 @@ const styles = StyleSheet.create({
   buttonSpacing: {
     height: 10,
   },
+  chartPlaceholder: {
+  backgroundColor: '#f9f9f9',
+  borderWidth: 1,
+  borderColor: '#ddd',
+  borderRadius: 8,
+  padding: 20,
+  alignItems: 'center',
+  height: 250,
+  justifyContent: 'center',
+},
+chartPlaceholderTitle: {
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: '#FF9800',
+  marginBottom: 10,
+},
+chartPlaceholderSubtitle: {
+  fontSize: 14,
+  color: '#666',
+  marginBottom: 20,
+},
+miniTable: {
+  width: '80%',
+  marginTop: 10,
+},
+miniTableHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  borderBottomWidth: 1,
+  borderBottomColor: '#FF9800',
+  paddingBottom: 5,
+  marginBottom: 5,
+},
+miniTableHeaderText: {
+  fontWeight: 'bold',
+  color: '#333',
+  fontSize: 14,
+},
+miniTableRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingVertical: 5,
+},
+miniTableCell: {
+  fontSize: 14,
+}
 });

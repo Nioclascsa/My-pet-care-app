@@ -1,53 +1,84 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack } from 'expo-router';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { useEffect, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
-import { auth, mantenerSesionActiva } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import { auth } from '../config/firebase';
+
+const checkSavedSession = async () => {
+  try {
+    const session = await AsyncStorage.getItem('auth_user');
+    return !!session;
+  } catch (error) {
+    console.error('Error verificando sesión guardada:', error);
+    return false;
+  }
+};
+
+// Función para guardar sesión
+const saveUserSession = async (user: any) => {
+  try {
+    if (!user) {
+      await AsyncStorage.removeItem('auth_user');
+      return;
+    }
+    
+    await AsyncStorage.setItem('auth_user', JSON.stringify({
+      uid: user.uid,
+      email: user.email
+    }));
+  } catch (error) {
+    console.error('Error guardando sesión:', error);
+  }
+};
 
 export default function RootLayout() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    // Verificar si hay una sesión guardada
+    const checkSession = async () => {
+      const hasSavedSession = await checkSavedSession();
+      if (hasSavedSession) {
+        setIsAuthenticated(true);
+      }
+      setIsLoading(false);
+    };
+    
+    checkSession();
+
+    // Escuchar cambios de autenticación
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
+      console.log('Estado de autenticación cambió:', user ? `Usuario: ${user.email}` : 'No autenticado');
+      setIsAuthenticated(!!user);
+      setIsLoading(false);
+      
+      // Guardar estado de autenticación
+      saveUserSession(user);
     });
 
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    // Configurar listener para cambios de estado de la app
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active') {
-        // Cuando la app vuelve al primer plano, refrescar el token de sesión
-        console.log('App volvió al primer plano, refrescando sesión...');
-        mantenerSesionActiva();
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  if (loading) {
-    return null; // O un loading screen
-  }
-
-  if (!user) {
+  // Mientras se carga, mostrar indicador
+  if (isLoading) {
     return (
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="auth" />
-      </Stack>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+        <ActivityIndicator size="large" color="#2196F3" />
+        <Text style={{ marginTop: 15, fontSize: 16, color: '#666' }}>Cargando...</Text>
+      </View>
     );
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="mascotas" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      {!isAuthenticated ? (
+        // CAMBIO IMPORTANTE AQUÍ: Usar nombres de carpeta reales
+        <Stack.Screen name="auth" />
+      ) : (
+        <Stack.Screen name="(tabs)" />
+      )}
     </Stack>
   );
 }

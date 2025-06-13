@@ -1,11 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'; // Añadir esta importación
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { FirebaseError } from 'firebase/app';
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useEffect, useState } from "react"; // Añadir useEffect
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { auth } from "../../config/firebase";
-import TestConnection from '../components/TestConnection';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -48,43 +46,64 @@ export default function LoginScreen() {
     }
   };
 
+  // Definir la función saveUserSession localmente si no está disponible en firebase.ts
+  const saveUserSession = async (user: any) => {
+    try {
+      if (!user) return;
+      
+      // Guardar datos mínimos del usuario
+      await AsyncStorage.setItem('auth_user', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || ''
+      }));
+      console.log('Sesión guardada correctamente');
+    } catch (error) {
+      console.error('Error guardando sesión:', error);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+      Alert.alert("Error", "Por favor, ingresa tu correo y contraseña");
       return;
     }
-
+    
     setLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Usuario autenticado:', userCredential.user.email);
       
-      // Guardar email para futuras sesiones
-      await guardarCredenciales(email);
+      // Guardar el email para autocompletar
+      await guardarCredenciales(userCredential.user.email || '');
       
-      router.replace('/(tabs)'); // Redirect to your tabs route after successful login
-    } catch (error: unknown) {
-      console.error('Error de login:', error);
-      if (error instanceof FirebaseError) {
-        switch (error.code) {
-          case 'auth/invalid-email':
-            Alert.alert('Error', 'El correo electrónico no es válido');
-            break;
-          case 'auth/user-disabled':
-            Alert.alert('Error', 'Esta cuenta ha sido deshabilitada');
-            break;
-          case 'auth/user-not-found':
-            Alert.alert('Error', 'No existe una cuenta con este correo');
-            break;
-          case 'auth/wrong-password':
-            Alert.alert('Error', 'Contraseña incorrecta');
-            break;
-          default:
-            Alert.alert('Error', error.message);
-        }
-      } else {
-        Alert.alert('Error', 'Ha ocurrido un error inesperado');
+      // Guardar datos para mantener la sesión
+      await saveUserSession(userCredential.user);
+      
+      console.log("Login exitoso:", userCredential.user.email);
+      
+      // Navegación a la pantalla principal con una pequeña espera
+      // para asegurar que todo se ha guardado correctamente
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
+      
+    } catch (error: any) {
+      console.error("Error en login:", error);
+      
+      // Mensajes de error más específicos para mejorar la experiencia de usuario
+      let errorMessage = "Credenciales inválidas, por favor intenta nuevamente";
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No existe una cuenta con este correo electrónico";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "La contraseña es incorrecta";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "El formato del correo electrónico es inválido";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Demasiados intentos fallidos. Por favor, intenta más tarde";
       }
+      
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -110,7 +129,7 @@ export default function LoginScreen() {
       <Text style={styles.title}>Iniciar Sesión</Text>
       <Text style={styles.subtitle}>Bienvenido a My Pet Care</Text>
       
-      <TestConnection />
+      
       
       <TextInput
         placeholder="Correo electrónico"

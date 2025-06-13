@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import React from 'react';
@@ -23,8 +24,16 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Eliminar datos guardados en AsyncStorage
+              await AsyncStorage.removeItem('auth_user');
+              await AsyncStorage.removeItem('user_email');
+              await AsyncStorage.removeItem('user_data');
+              
+              // Cerrar sesión en Firebase
               await signOut(auth);
               console.log('Sesión cerrada correctamente');
+              
+              // Usar la ruta correcta
               router.replace('/auth/Login');
             } catch (error) {
               console.error('Error al cerrar sesión:', error);
@@ -35,7 +44,6 @@ export default function ProfileScreen() {
       ]
     );
   };
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>

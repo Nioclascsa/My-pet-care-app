@@ -10,7 +10,7 @@ export interface CalendarEvent {
 
 export const createGoogleCalendarEvent = async (event: CalendarEvent) => {
   try {
-    // Formatear fechas para Google Calendar (formato ISO sin guiones y dos puntos)
+    
     const formatDateForGoogle = (date: Date) => {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
@@ -18,7 +18,7 @@ export const createGoogleCalendarEvent = async (event: CalendarEvent) => {
     const startTime = formatDateForGoogle(event.startDate);
     const endTime = formatDateForGoogle(event.endDate);
 
-    // Construir URL de Google Calendar
+ 
     const baseUrl = 'https://calendar.google.com/calendar/render';
     const params = new URLSearchParams({
       action: 'TEMPLATE',
@@ -32,7 +32,7 @@ export const createGoogleCalendarEvent = async (event: CalendarEvent) => {
 
     console.log('🗓️ Abriendo Google Calendar:', calendarUrl);
 
-    // Intentar abrir Google Calendar
+    
     const supported = await Linking.canOpenURL(calendarUrl);
     
     if (supported) {

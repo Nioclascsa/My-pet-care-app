@@ -1,3 +1,7 @@
-declare module 'firebase/auth/react-native' {
-  export * from 'firebase/auth';
+import { Persistence, ReactNativeAsyncStorage } from "firebase/auth";
+
+declare module "firebase/auth" {
+  export declare function getReactNativePersistence(
+    storage: ReactNativeAsyncStorage,
+  ): Persistence;
 }

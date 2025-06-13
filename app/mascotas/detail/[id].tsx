@@ -1,51 +1,72 @@
+import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, Dimensions, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { auth } from '../../../config/firebase';
 import { getMascotas, getRegistrosPeso, type Mascota, type RegistroPeso } from '../../../services/pets';
 
+
 export default function MascotaDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; updated?: string }>();
+  const { id, updated } = params;
   const router = useRouter();
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [loading, setLoading] = useState(true);
   const [registrosPeso, setRegistrosPeso] = useState<RegistroPeso[]>([]);
   const [loadingPeso, setLoadingPeso] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Un solo useEffect para cargar todos los datos
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const user = auth.currentUser;
-        if (!user || !id) return;
-        
-        // Cargar datos de la mascota
-        const mascotas = await getMascotas(user.uid);
-        const found = mascotas.find(m => m.id === id);
-        setMascota(found || null);
-        
-        // Cargar registros de peso
-        if (found) {
-          const registros = await getRegistrosPeso(found.id);
-          setRegistrosPeso(registros.sort((a, b) => 
-            new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-          ));
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-        Alert.alert('Error', 'No se pudo cargar la información');
-      } finally {
-        setLoading(false);
-        setLoadingPeso(false);
+  // Función para cargar datos
+  const loadData = async (showRefreshIndicator = false) => {
+    try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
       }
-    };
-    
-    if (id) {
-      loadData();
+      
+      const user = auth.currentUser;
+      if (!user || !id) return;
+      
+      // Cargar datos de la mascota
+      const mascotas = await getMascotas(user.uid);
+      const found = mascotas.find(m => m.id === id);
+      setMascota(found || null);
+      
+      // Cargar registros de peso
+      if (found) {
+        const registros = await getRegistrosPeso(found.id);
+        setRegistrosPeso(registros.sort((a, b) => 
+          new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+        ));
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      Alert.alert('Error', 'No se pudo cargar la información');
+    } finally {
+      setLoading(false);
+      setLoadingPeso(false);
+      setIsRefreshing(false);
     }
-  }, [id]);
+  };
 
+  // useEffect para carga inicial
+ useEffect(() => {
+  if (id) {
+    console.log('Cargando datos de mascota con ID:', id);
+    loadData();
+  }
+}, [id]);
+
+useFocusEffect(
+  React.useCallback(() => {
+    console.log(`Pantalla de detalle enfocada, id: ${id}, updated: ${updated}`);
+    console.log('Datos actuales de mascota:', mascota);
+    loadData();
+    return () => {};
+  }, [id, updated])
+);
   const calcularEdad = (fechaNacimiento: string | undefined) => {
     if (!fechaNacimiento) return 'No especificada';
     const hoy = new Date();
@@ -59,6 +80,32 @@ export default function MascotaDetailScreen() {
       return `${meses} mes${meses !== 1 ? 'es' : ''}`;
     }
   };
+
+  const formatDate = (dateString?: string) => {
+  if (!dateString) return '';
+  
+  try {
+    const date = new Date(dateString);
+    
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) {
+      console.warn('Fecha inválida:', dateString);
+      return dateString;
+    }
+    
+    // Opciones de formato localizadas
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    };
+    
+    return date.toLocaleDateString('es-ES', options);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString; // Devolver el string original en caso de error
+  }
+};
 
   // Calcular estadísticas del peso
   const calculateWeightStats = () => {
@@ -116,7 +163,17 @@ export default function MascotaDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={() => loadData(true)}
+          colors={["#2196F3"]}
+          tintColor="#2196F3"
+        />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.name}>{mascota.nombre}</Text>
         <Text style={styles.species}>{mascota.especie} - {mascota.raza}</Text>
@@ -267,11 +324,74 @@ export default function MascotaDetailScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Próximas Citas</Text>
-        <Text style={styles.infoText}>Próxima vacuna: {mascota.fechas?.proximaVacuna || 'No programada'}</Text>
-        <Text style={styles.infoText}>Próxima desparasitación: {mascota.fechas?.proximaDesparasitacion || 'No programada'}</Text>
-        <Text style={styles.infoText}>Próxima revisión: {mascota.fechas?.proximaRevision || 'No programada'}</Text>
-      </View>
+  <Text style={styles.sectionTitle}>📅 Próximas Citas</Text>
+  
+  {mascota.fechas ? (
+    <>
+      {mascota.fechas.proximaVacuna ? (
+        <View style={styles.appointmentItem}>
+          <View style={styles.appointmentIconContainer}>
+            <Text style={styles.appointmentIcon}>💉</Text>
+          </View>
+          <View style={styles.appointmentInfo}>
+            <Text style={styles.appointmentTitle}>Vacunación</Text>
+            <Text style={styles.appointmentDate}>
+              {formatDate(mascota.fechas.proximaVacuna)}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      
+      {mascota.fechas.proximaDesparasitacion ? (
+        <View style={styles.appointmentItem}>
+          <View style={styles.appointmentIconContainer}>
+            <Text style={styles.appointmentIcon}>🪱</Text>
+          </View>
+          <View style={styles.appointmentInfo}>
+            <Text style={styles.appointmentTitle}>Desparasitación</Text>
+            <Text style={styles.appointmentDate}>
+              {formatDate(mascota.fechas.proximaDesparasitacion)}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      
+      {mascota.fechas.proximaRevision ? (
+        <View style={styles.appointmentItem}>
+          <View style={styles.appointmentIconContainer}>
+            <Text style={styles.appointmentIcon}>🩺</Text>
+          </View>
+          <View style={styles.appointmentInfo}>
+            <Text style={styles.appointmentTitle}>Revisión General</Text>
+            <Text style={styles.appointmentDate}>
+              {formatDate(mascota.fechas.proximaRevision)}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      
+      {!mascota.fechas.proximaVacuna && !mascota.fechas.proximaDesparasitacion && !mascota.fechas.proximaRevision ? (
+        <View style={styles.noAppointmentsContainer}>
+          <Text style={styles.noAppointmentsText}>No hay citas próximas programadas</Text>
+          <Button
+            title="Agendar Cita"
+            onPress={() => router.push(`/mascotas/care/citas?id=${mascota.id}`)}
+            color="#2196F3"
+          />
+        </View>
+      ) : null}
+    </>
+  ) : (
+    <View style={styles.noAppointmentsContainer}>
+      <Text style={styles.noAppointmentsText}>No hay citas próximas programadas</Text>
+      <Button
+        title="Agendar Cita"
+        onPress={() => router.push(`/mascotas/care/citas?id=${mascota.id}`)}
+        color="#2196F3"
+      />
+    </View>
+  )}
+</View>
 
       <View style={styles.editButton}>
         <Button
@@ -406,5 +526,50 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginBottom: 10,
-  }
+  },
+  appointmentItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: '#eee',
+},
+appointmentIconContainer: {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  backgroundColor: '#e3f2fd',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: 15,
+},
+appointmentIcon: {
+  fontSize: 20,
+},
+appointmentInfo: {
+  flex: 1,
+},
+appointmentTitle: {
+  fontSize: 16,
+  fontWeight: '500',
+  color: '#333',
+},
+appointmentDate: {
+  fontSize: 14,
+  color: '#666',
+  marginTop: 2,
+},
+noAppointmentsContainer: {
+  padding: 15,
+  alignItems: 'center',
+  backgroundColor: '#f8f9fa',
+  borderRadius: 8,
+  marginTop: 5,
+},
+noAppointmentsText: {
+  color: '#666',
+  fontSize: 15,
+  marginBottom: 10,
+  fontStyle: 'italic',
+},
 });

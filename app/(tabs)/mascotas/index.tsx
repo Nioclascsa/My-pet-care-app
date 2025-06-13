@@ -1,8 +1,9 @@
+import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { auth } from '../../../config/firebase';
-import { deleteMascota, getMascotas, type Mascota } from '../../../services/pets';
+import { deleteMascota, getMascotas, Mascota } from '../../../services/pets';
 
 export default function MascotasScreen() {
   const [mascotas, setMascotas] = useState<Mascota[]>([]);
@@ -11,7 +12,12 @@ export default function MascotasScreen() {
 
   const fetchData = async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      Alert.alert('Error', 'Debes iniciar sesión para ver tus mascotas');
+      router.replace('/auth/Login');
+      return;
+    }
+
     setLoading(true);
     try {
       const list = await getMascotas(user.uid);
@@ -33,45 +39,53 @@ export default function MascotasScreen() {
   useFocusEffect(
     React.useCallback(() => {
       fetchData();
+      return () => {};
     }, [])
   );
 
-  const handleMascotaPress = (mascotaId: string) => {
-    router.push({
-      pathname: "/mascotas/detail/[id]",
-      params: { id: mascotaId }
-    });
-  };
-
   const handleDelete = async (mascota: Mascota) => {
     Alert.alert(
-      'Eliminar Mascota',
-      `¿Estás seguro de que quieres eliminar a ${mascota.nombre}?`,
+      "Eliminar Mascota",
+      `¿Estás seguro de que deseas eliminar a ${mascota.nombre}? Esta acción eliminará todos los registros asociados como historial de peso, alimentación, citas médicas y medicamentos. Esta acción no se puede deshacer.`,
       [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Eliminar", 
+          style: "destructive",
           onPress: async () => {
+            setLoading(true);
             try {
-              await deleteMascota(mascota.id);
-              fetchData(); // Recargar lista después de eliminar
-              Alert.alert('Éxito', `${mascota.nombre} ha sido eliminado`);
+              await deleteMascota(mascota.id!);
+              
+              Alert.alert(
+                "Mascota eliminada",
+                `${mascota.nombre} y todos sus datos asociados han sido eliminados correctamente.`
+              );
+              
+              // Actualizar la lista de mascotas
+              fetchData();
             } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar la mascota');
+              console.error("Error al eliminar mascota:", error);
+              Alert.alert(
+                "Error",
+                "No se pudo eliminar la mascota. Por favor, inténtalo de nuevo."
+              );
+            } finally {
+              setLoading(false);
             }
-          },
-        },
+          } 
+        }
       ]
     );
   };
 
+  const handleAddPet = () => {
+    router.push('/mascotas/addPet');
+  };
+
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#2196F3" />
         <Text style={styles.loadingText}>Cargando mascotas...</Text>
       </View>
@@ -81,169 +95,190 @@ export default function MascotasScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🐾 Mis Mascotas</Text>
-        <Text style={styles.headerSubtitle}>
-          {mascotas.length === 0 ? 'No tienes mascotas registradas' : `${mascotas.length} mascota${mascotas.length > 1 ? 's' : ''} registrada${mascotas.length > 1 ? 's' : ''}`}
-        </Text>
-      </View>
-
-      <View style={styles.addButtonContainer}>
-        <Button
-          title="➕ Agregar Nueva Mascota"
-          onPress={() => router.push('/(tabs)/mascotas/addPet')}
-          color="#4CAF50"
-        />
+        <Text style={styles.title}>Mis Mascotas</Text>
+        <TouchableOpacity 
+          style={styles.addButton} 
+          onPress={handleAddPet}
+        >
+          <MaterialIcons name="add" size={24} color="white" />
+        </TouchableOpacity>
       </View>
 
       {mascotas.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateTitle}>¡Agrega tu primera mascota! 🐶🐱</Text>
-          <Text style={styles.emptyStateText}>
-            Comienza registrando a tu compañero peludo para llevar un control completo de su cuidado.
+        <View style={styles.emptyContainer}>
+          <FontAwesome5 name="paw" size={50} color="#cccccc" />
+          <Text style={styles.emptyText}>
+            No tienes mascotas registradas
           </Text>
+          <TouchableOpacity 
+            style={styles.addFirstButton}
+            onPress={handleAddPet}
+          >
+            <Text style={styles.addFirstButtonText}>Añadir Mi Primera Mascota</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
           data={mascotas}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id!}
           renderItem={({ item }) => (
             <TouchableOpacity 
-              onPress={() => handleMascotaPress(item.id)}
-              style={styles.mascotaItem}
+              style={styles.mascotaCard}
+              onPress={() => router.push(`/mascotas/detail/${item.id}`)}
             >
-              <View style={styles.item}>
-                <View style={styles.mascotaInfo}>
-                  <Text style={styles.name}>🐾 {item.nombre}</Text>
-                  <Text style={styles.details}>
-                    {item.especie} {item.raza ? `• ${item.raza}` : ''} 
+              <View style={styles.mascotaInfo}>
+                <Text style={styles.mascotaName}>{item.nombre}</Text>
+                <Text style={styles.mascotaDetails}>
+                  {item.especie} {item.raza ? `- ${item.raza}` : ''}
+                </Text>
+                {item.fechaNacimiento && (
+                  <Text style={styles.mascotaAge}>
+                    Edad: {calculateAge(item.fechaNacimiento)}
                   </Text>
-                  <Text style={styles.details}>
-                    Peso: {item.peso ? `${item.peso}kg` : 'No registrado'}
-                  </Text>
-                </View>
-                <View style={styles.actions}>
-                  <View style={styles.actionButton}>
-                    <Button
-                      title="Ver"
-                      onPress={() => handleMascotaPress(item.id)}
-                      color="#2196F3"
-                    />
-                  </View>
-                  <View style={styles.actionButton}>
-                    <Button
-                      title="Editar"
-                      onPress={() => router.push({
-                        pathname: "/mascotas/edit/[id]",
-                        params: { id: item.id }
-                      })}
-                      color="#FF9800"
-                    />
-                  </View>
-                  <View style={styles.actionButton}>
-                    <Button
-                      title="Eliminar"
-                      onPress={() => handleDelete(item)}
-                      color="#F44336"
-                    />
-                  </View>
-                </View>
+                )}
+              </View>
+              <View style={styles.actions}>
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => router.push(`/mascotas/edit/${item.id}`)}
+                >
+                  <MaterialIcons name="edit" size={20} color="#2196F3" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.deleteButton}
+                  onPress={() => handleDelete(item)}
+                >
+                  <MaterialIcons name="delete" size={20} color="#FF5252" />
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
-          refreshing={loading}
-          onRefresh={fetchData}
+          contentContainerStyle={styles.listContainer}
         />
       )}
     </View>
   );
 }
 
+const calculateAge = (fechaNacimiento: string) => {
+  const birthDate = new Date(fechaNacimiento);
+  const today = new Date();
+  
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  
+  if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
+    years--;
+    months += 12;
+  }
+  
+  if (years === 0) {
+    return `${months} mes${months !== 1 ? 'es' : ''}`;
+  } else {
+    return `${years} año${years !== 1 ? 's' : ''} ${months} mes${months !== 1 ? 'es' : ''}`;
+  }
+};
+
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#f5f5f5' 
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 15,
   },
-  center: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#666',
-  },
-  header: {
-    backgroundColor: '#2196F3',
-    padding: 20,
+  centered: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
+    color: '#333',
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: 'white',
-    opacity: 0.9,
-    marginTop: 5,
+  addButton: {
+    backgroundColor: '#2196F3',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  addButtonContainer: {
-    margin: 15,
-  },
-  emptyState: {
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
   },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  emptyStateText: {
-    fontSize: 16,
+  emptyText: {
+    fontSize: 18,
     color: '#666',
-    textAlign: 'center',
-    lineHeight: 24,
+    marginTop: 15,
+    marginBottom: 20,
   },
-  item: { 
+  addFirstButton: {
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  addFirstButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+    fontSize: 16,
+  },
+  mascotaCard: {
     backgroundColor: 'white',
-    marginHorizontal: 15,
-    marginVertical: 5,
-    padding: 15,
     borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
   },
   mascotaInfo: {
-    marginBottom: 10,
+    flex: 1,
   },
-  name: { 
-    fontSize: 18, 
+  mascotaName: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 5,
   },
-  details: { 
-    fontSize: 14, 
-    color: '#666', 
-    marginBottom: 2,
+  mascotaDetails: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 3,
   },
-  actions: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between',
+  mascotaAge: {
+    fontSize: 14,
+    color: '#2196F3',
+    marginTop: 5,
   },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: 2,
+  actions: {
+    flexDirection: 'row',
   },
-  mascotaItem: {},
+  editButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  deleteButton: {
+    padding: 8,
+  },
+  listContainer: {
+    paddingBottom: 20,
+  },
 });

@@ -1,11 +1,12 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Picker } from '@react-native-picker/picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Button, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
 import { auth } from '../../../config/firebase';
 import { createVetAppointmentEvent, showCalendarOptions } from '../../../services/googleCalendar';
-import { addCitaMedica, getMascotas, type CitaMedica, type Mascota } from '../../../services/pets';
+import { addCitaMedica, getMascotas, type Mascota } from '../../../services/pets';
+
 
 export default function AgendarCitaScreen() {
   const params = useLocalSearchParams();
@@ -21,7 +22,7 @@ export default function AgendarCitaScreen() {
   // Estados del formulario
   const [fecha, setFecha] = useState(new Date());
   const [hora, setHora] = useState(new Date());
-  const [tipo, setTipo] = useState<CitaMedica['tipo']>('revision');
+
   const [veterinario, setVeterinario] = useState('');
   const [motivo, setMotivo] = useState('');
   const [notas, setNotas] = useState('');
@@ -31,6 +32,19 @@ export default function AgendarCitaScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Estados para el nuevo selector de tipo de cita
+  const [openTipoCita, setOpenTipoCita] = useState(false);
+  const [tipoCita, setTipoCita] = useState<string | null>(null);
+  const [tiposCita, setTiposCita] = useState([
+    { label: 'Vacunación', value: 'vacuna' },
+    { label: 'Desparasitación', value: 'desparasitacion' },
+    { label: 'Revisión General', value: 'revision' },
+    { label: 'Consulta', value: 'consulta' },
+    { label: 'Control', value: 'control' },
+    { label: 'Otro', value: 'otro' },
+  ]);
+  const [motivoEspecifico, setMotivoEspecifico] = useState('');
+  
   useEffect(() => {
     const loadMascota = async () => {
       console.log('🔍 Cargando mascota con ID:', id);
@@ -78,7 +92,7 @@ export default function AgendarCitaScreen() {
   }, [id]);
 
   const handleSave = async () => {
-    if (!mascota || !veterinario || !motivo) {
+    if (!mascota || !tipoCita || !fecha || !veterinario || !motivo) {
       Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
       return;
     }
@@ -96,58 +110,88 @@ export default function AgendarCitaScreen() {
         return;
       }
 
-      const citaData: Omit<CitaMedica, 'id'> = {
+      const citaData = {
         mascotaId: mascota.id,
         fecha: fechaCita.toISOString().split('T')[0],
         hora: fechaCita.toTimeString().split(' ')[0].substring(0, 5),
-        tipo,
+        tipo: tipoCita === 'otro' ? motivoEspecifico : tipoCita,
+        motivo: motivo, // Mantener el motivo separado
         veterinario,
-        motivo,
-        estado: 'programada',
         notas,
+        completada: false
       };
 
       console.log('💾 Guardando cita:', citaData);
       await addCitaMedica(citaData);
 
-      // Crear evento para Google Calendar
-      const calendarEvent = createVetAppointmentEvent(
-        mascota.nombre,
-        tipo,
-        fechaCita,
-        veterinario,
-        motivo,
-        notas
-      );
+      // Crear evento para Google Calendar si está implementado
+      try {
+        const calendarEvent = createVetAppointmentEvent(
+          mascota.nombre,
+          tipoCita === 'otro' ? motivoEspecifico : tipoCita,
+          fechaCita,
+          veterinario,
+          motivo,
+          notas
+        );
 
-      // Mostrar mensaje de éxito con opción de calendario
-      Alert.alert(
-        '¡Cita Programada! 📅',
-        `Recordatorio creado para ${mascota.nombre}:\n\n📅 ${fechaCita.toLocaleDateString('es-ES', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })}\n🕐 ${fechaCita.toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit'
-        })}\n🏥 ${veterinario}\n📝 ${motivo}`,
-        [
-          {
-            text: '📅 Agregar al Calendario',
-            onPress: () => {
-              showCalendarOptions(calendarEvent);
-              // No hacemos router.back() aquí para que puedan agregar al calendario
+        // Mostrar mensaje de éxito con opción de calendario
+        Alert.alert(
+          '¡Cita Programada! 📅',
+          `Recordatorio creado para ${mascota.nombre}:\n\n📅 ${fechaCita.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}\n🕐 ${fechaCita.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          })}\n🏥 ${veterinario}\n📝 ${motivo}`,
+          [
+            {
+              text: '📅 Agregar al Calendario',
+              onPress: () => {
+                showCalendarOptions(calendarEvent);
+                // Navegar después de un tiempo para permitir agregar al calendario
+                setTimeout(() => {
+                  router.navigate({
+                    pathname: `/mascotas/detail/${mascota.id}`,
+                    params: { updated: new Date().getTime().toString() }
+                  });
+                }, 1500);
+              }
+            },
+            {
+              text: 'Solo Guardar',
+              onPress: () => {
+                // Navegar de vuelta con parámetro de timestamp para forzar actualización
+                router.navigate({
+                  pathname: `/mascotas/detail/${mascota.id}`,
+                  params: { updated: new Date().getTime().toString() }
+                });
+              },
+              style: 'cancel'
             }
-          },
-          {
-            text: 'Solo Guardar',
-            onPress: () => router.back(),
-            style: 'cancel'
-          }
-        ]
-      );
-
+          ]
+        );
+      } catch (error) {
+        
+        Alert.alert(
+          'Éxito', 
+          'Cita médica registrada correctamente (No se pudo crear evento de calendario)',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                router.navigate({
+                  pathname: `/mascotas/detail/${mascota.id}`,
+                  params: { updated: new Date().getTime().toString() }
+                });
+              }
+            }
+          ]
+        );
+      }
     } catch (error: any) {
       console.error('❌ Error guardando cita:', error);
       Alert.alert('Error', 'No se pudo guardar el recordatorio: ' + error.message);
@@ -167,6 +211,27 @@ export default function AgendarCitaScreen() {
     setShowTimePicker(false);
     if (selectedTime) {
       setHora(selectedTime);
+    }
+  };
+
+ 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Opciones de formato localizadas
+      const options: Intl.DateTimeFormatOptions = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      };
+      
+      return date.toLocaleDateString('es-ES', options);
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString; 
     }
   };
 
@@ -204,22 +269,41 @@ export default function AgendarCitaScreen() {
         <Text style={styles.sectionTitle}>📋 Información del Recordatorio</Text>
         
         <Text style={styles.label}>Tipo de Cita *</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={tipo}
-            onValueChange={(itemValue) => setTipo(itemValue)}
-          >
-            <Picker.Item label="🩺 Revisión General" value="revision" />
-            <Picker.Item label="💉 Vacunación" value="vacuna" />
-            <Picker.Item label="🐛 Desparasitación" value="desparasitacion" />
-            <Picker.Item label="🚨 Emergencia" value="emergencia" />
-            <Picker.Item label="🔬 Exámenes" value="otro" />
-          </Picker>
-        </View>
+        <DropDownPicker
+          open={openTipoCita}
+          value={tipoCita}
+          items={tiposCita}
+          setOpen={setOpenTipoCita}
+          setValue={setTipoCita}
+          setItems={setTiposCita}
+          placeholder="Selecciona el tipo de cita"
+          style={styles.dropdownStyle}
+          textStyle={styles.dropdownText}
+          dropDownContainerStyle={styles.dropdownContainer}
+          listMode="SCROLLVIEW"
+          scrollViewProps={{
+            nestedScrollEnabled: true,
+          }}
+          zIndex={3000}
+          zIndexInverse={1000}
+        />
+
+        {/* Si seleccionan "Otro", mostrar campo para especificar */}
+        {tipoCita === 'otro' && (
+          <>
+            <Text style={styles.label}>Especificar Motivo *</Text>
+            <TextInput
+              style={styles.input}
+              value={motivoEspecifico}
+              onChangeText={setMotivoEspecifico}
+              placeholder="Especifica el motivo de la cita"
+            />
+          </>
+        )}
 
         <Text style={styles.label}>📅 Fecha *</Text>
         <Button
-          title={`${fecha.toLocaleDateString()}`}
+          title={`${formatDate(fecha.toISOString().split('T')[0])}`}
           onPress={() => setShowDatePicker(true)}
         />
         {showDatePicker && (
@@ -385,4 +469,22 @@ const styles = StyleSheet.create({
     color: '#2E7D32',
     marginBottom: 4,
   },
+  dropdownStyle: {
+    height: 40,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+    backgroundColor: 'white',
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownContainer: {
+    backgroundColor: 'white',
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+  },
+  
 });

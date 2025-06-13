@@ -17,7 +17,7 @@ export default function RegisterScreen() {
     }
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      // Tras registro correcto, reemplazamos la pila y vamos al stack de tabs
+      
       router.replace('/');
     } catch (error: any) {
       Alert.alert('Error al registrar', error.message);
