@@ -1,7 +1,9 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Button, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import ImagePicker from '../../../components/ImagePicker';
 import { auth } from '../../../config/firebase';
 import { addMascota } from '../../../services/pets';
 
@@ -13,6 +15,8 @@ export default function AddMascota() {
   const [peso, setPeso] = useState('');
   const [veterinario, setVeterinario] = useState('');
   const [numeroChip, setNumeroChip] = useState('');
+  const [imagen, setImagen] = useState('');
+  const [loading, setLoading] = useState(false);
   
   // Alertas
   const [alertaVacunas, setAlertaVacunas] = useState(true);
@@ -20,7 +24,7 @@ export default function AddMascota() {
   const [alertaRevision, setAlertaRevision] = useState(true);
   const [alertaMedicamentos, setAlertaMedicamentos] = useState(true);
 
-// Estados para el dropdown de especies
+  // Estados para el dropdown de especies
   const [open, setOpen] = useState(false);
   const [especie, setEspecie] = useState('');
   const [especies, setEspecies] = useState([
@@ -34,6 +38,10 @@ export default function AddMascota() {
     { label: 'Otro', value: 'Otro' },
   ]);
 
+  // Función para manejar la selección de imagen
+  const handleImageSelected = (url: string) => {
+    setImagen(url);
+  };
 
   const handleSave = async () => {
     const user = auth.currentUser;
@@ -41,6 +49,7 @@ export default function AddMascota() {
     if (!nombre || !especie) return Alert.alert('Error', 'Nombre y especie son obligatorios');
 
     try {
+      setLoading(true);
       await addMascota({
         nombre,
         especie,
@@ -49,6 +58,7 @@ export default function AddMascota() {
         peso: parseFloat(peso) || 0,
         veterinario,
         numeroChip,
+        imagen, // Agregamos la URL de la imagen
         ownerId: user.uid,
         alertasActivas: {
           vacunas: alertaVacunas,
@@ -73,12 +83,28 @@ export default function AddMascota() {
       );
     } catch (e: any) {
       Alert.alert('Error al crear', e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Registrar Nueva Mascota</Text>
+      
+      {/* Sección de la foto */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Foto de la Mascota</Text>
+        <View style={styles.photoContainer}>
+          <ImagePicker
+            onImageSelected={handleImageSelected}
+            size={150}
+          />
+        </View>
+        <Text style={styles.photoHint}>
+          Toca el círculo para seleccionar una foto de tu mascota
+        </Text>
+      </View>
       
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Información Básica</Text>
@@ -89,24 +115,24 @@ export default function AddMascota() {
           style={styles.input}
         />
         <Text style={styles.label}>Especie *</Text>
-      <DropDownPicker
-        open={open}
-        value={especie}
-        items={especies}
-        setOpen={setOpen}
-        setValue={setEspecie}
-        setItems={setEspecies}
-        placeholder="Selecciona una especie"
-        style={styles.dropdownStyle}
-        textStyle={styles.dropdownText}
-        dropDownContainerStyle={styles.dropdownContainer}
-        listMode="SCROLLVIEW"
-        scrollViewProps={{
-          nestedScrollEnabled: true,
-        }}
-        zIndex={3000}
-        zIndexInverse={1000}
-      />
+        <DropDownPicker
+          open={open}
+          value={especie}
+          items={especies}
+          setOpen={setOpen}
+          setValue={setEspecie}
+          setItems={setEspecies}
+          placeholder="Selecciona una especie"
+          style={styles.dropdownStyle}
+          textStyle={styles.dropdownText}
+          dropDownContainerStyle={styles.dropdownContainer}
+          listMode="SCROLLVIEW"
+          scrollViewProps={{
+            nestedScrollEnabled: true,
+          }}
+          zIndex={3000}
+          zIndexInverse={1000}
+        />
         <TextInput
           placeholder="Raza"
           value={raza}
@@ -169,8 +195,24 @@ export default function AddMascota() {
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button title="Registrar Mascota" onPress={handleSave} />
+        <TouchableOpacity 
+          style={styles.saveButton}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <Text style={styles.buttonText}>Guardando...</Text>
+          ) : (
+            <>
+              <MaterialIcons name="pets" size={20} color="white" />
+              <Text style={styles.buttonText}>Registrar Mascota</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
+      
+      {/* Espaciado final para evitar que el botón quede oculto en algunos dispositivos */}
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
@@ -193,12 +235,28 @@ const styles = StyleSheet.create({
     margin: 10,
     padding: 15,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
     color: '#333',
+  },
+  photoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  photoHint: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 14,
+    marginTop: 8,
   },
   input: {
     borderWidth: 1,
@@ -241,5 +299,19 @@ const styles = StyleSheet.create({
   },
   dropdownSpacer: {
     height: 150, // Ajusta este valor según sea necesario
+  },
+  saveButton: {
+    backgroundColor: '#2196F3',
+    padding: 15,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
   }
 });

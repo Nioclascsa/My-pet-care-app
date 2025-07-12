@@ -74,7 +74,7 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       {!isAuthenticated ? (
-        // CAMBIO IMPORTANTE AQUÍ: Usar nombres de carpeta reales
+        
         <Stack.Screen name="auth" />
       ) : (
         <Stack.Screen name="(tabs)" />

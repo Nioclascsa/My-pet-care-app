@@ -20,6 +20,7 @@ export interface Mascota {
   fechaNacimiento?: string;
   peso?: number;
   ownerId: string;
+  imagen: string;
   veterinario?: string;
   numeroChip?: string;
   alertasActivas?: {

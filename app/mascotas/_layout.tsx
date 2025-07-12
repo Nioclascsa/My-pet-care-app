@@ -22,7 +22,7 @@ export default function MascotasLayout() {
       <Stack.Screen 
         name="care" 
         options={{ 
-          headerShown: false // Porque care tiene su propio layout
+          headerShown: false 
         }} 
       />
     </Stack>

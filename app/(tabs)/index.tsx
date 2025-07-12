@@ -235,25 +235,7 @@ export default function DashboardScreen() {
                 <Text style={styles.accionText}>Agendar Cita</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={styles.accionItem}
-                onPress={() => router.push('/mascotas/seleccionar-peso')}
-              >
-                <View style={[styles.accionIconContainer, { backgroundColor: '#FF9800' }]}>
-                  <MaterialCommunityIcons name="scale" size={24} color="white" />
-                </View>
-                <Text style={styles.accionText}>Registrar Peso</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.accionItem}
-                onPress={() => router.push('/mascotas/seleccionar-medicacion')}
-              >
-                <View style={[styles.accionIconContainer, { backgroundColor: '#F44336' }]}>
-                  <MaterialCommunityIcons name="pill" size={24} color="white" />
-                </View>
-                <Text style={styles.accionText}>Medicamentos</Text>
-              </TouchableOpacity>
+             
             </View>
           </View>
         </>
